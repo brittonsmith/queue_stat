@@ -1,0 +1,261 @@
+#! /usr/bin/perl
+
+### queue_stat - makes sense of qstat.
+
+### Author: Britton D. Smith <brittonsmith@gmail.com>
+### Date: Maybe 2004ish?
+### Affiliation: Michigan State University
+### Homepage: http://hub.yt-project.org/
+
+### License:
+### Copyright (c) 2009 Britton D. Smith
+### 
+### Permission is hereby granted, free of charge, to any person
+### obtaining a copy of this software and associated documentation
+### files (the "Software"), to deal in the Software without
+### restriction, including without limitation the rights to use,
+### copy, modify, merge, publish, distribute, sublicense, and/or sell
+### copies of the Software, and to permit persons to whom the
+### Software is furnished to do so, subject to the following
+### conditions:
+
+### The above copyright notice and this permission notice shall be
+### included in all copies or substantial portions of the Software.
+
+### THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+### EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+### OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+### NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+### HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+### WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+### FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+### OTHER DEALINGS IN THE SOFTWARE.
+
+$login = getlogin();
+
+@moreUsers = @ARGV;
+
+@queue = split /\n/,`qstat -a`;
+shift @queue;
+shift @queue;
+@header = (shift @queue,
+	   shift @queue,
+	   shift @queue);
+
+$all{jobs}{total} = @queue;
+
+%statuses = ('Q' => 'Queued', 'R' => 'Running',
+	     'H' => 'Held',   'C' => 'Complete');
+@yourJobs = ();
+
+$queue[0] =~ /(^\d+)\./;
+$firstID = $1;
+$queue[-1] =~ /(^\d+)\./;
+$lastID = $1;
+
+foreach $job (@queue) {
+    my $shortJob = $job;
+
+    my $sep = $job;
+    $sep =~ s/\s+/ /g;
+    my @onLine = split " ", $sep;
+
+    my $allStatus = join "", (keys %statuses);
+    $job =~ /\d\d\:\d\d\s+([$allStatus])/;
+    my $status = $1;
+
+    my $user = $onLine[1];
+    my $processors = $onLine[6];
+    my $time = $onLine[8];
+    my @time = split ":", $time;
+    my $hours = $time[0];
+    my $minutes = $time[1];
+    $hours += $minutes/60.;
+    my $procHours = $processors * $hours;
+
+    $all{jobs}{total}{total} ++;
+    $all{jobs}{serial}{total}++ if ($processors eq ' 1');
+    $all{processors}{total} += $processors;
+    $all{procHours}{total} += $procHours;
+
+    $users{$user}{jobs}{total}++;
+    $users{$user}{processors}{total} += $processors;
+    $users{$user}{procHours}{total} += $procHours;
+
+    $all{jobs}{total}{$status}++;
+    $all{jobs}{serial}{$status}++ if ($processors == 1);
+    $all{jobs}{serial}{total}++ if ($processors == 1);
+    $all{processors}{$status} += $processors;
+    $all{procHours}{$status} += $procHours;
+
+    $users{$user}{jobs}{$status}++;
+    $users{$user}{processors}{$status} += $processors;
+    $users{$user}{procHours}{$status} += $procHours;
+
+    push @yourJobs,$shortJob if ($user =~ /$login/);
+  MORE: foreach $moreUser (@moreUsers) {
+      if ($user =~ /$moreUser/) {
+	  push @yourJobs,$shortJob;
+	  last MORE;
+      }
+  }
+}
+@allUsersByJobs = sort byMostProcHours (keys %users);
+
+# sort output into columns for better formatting
+my @by_column = ();
+my @column_format = ('l', 'c');
+push @by_column, ["Jobs [Procs]", "-", "Serial", "Parallel",
+		  "Total", "Parallel (hrs)", "Total (hrs)"];
+push @by_column, ["Total", "-",
+		  [$all{job}{serial}{total}, $all{jobs}{serial}{total}],
+		  [($all{jobs}{total}{total}-$all{jobs}{serial}{total}), 
+		   ($all{processors}{total}-$all{jobs}{serial}{total})],
+		  [$all{jobs}{total}{total}, $all{processors}{total}],
+		  [($all{jobs}{total}{total}-$all{jobs}{serial}{total}),
+		   ($all{procHours}{total}-$all{jobs}{serial}{total})],
+		  [$all{jobs}{total}{total}, $all{procHours}{total}]];
+foreach $status (keys %statuses) {
+  push @column_format, 'c';
+  push @by_column, [$statuses{$status}, "-",
+		    [$all{jobs}{serial}{$status}, $all{jobs}{serial}{$status}],
+		    [($all{jobs}{total}{$status}-$all{jobs}{serial}{$status}),
+		     ($all{processors}{$status}-$all{jobs}{serial}{$status})],
+		    [$all{jobs}{total}{$status}, $all{processors}{$status}],
+		    [($all{jobs}{total}{$status}-$all{jobs}{serial}{$status}),
+		     ($all{procHours}{$status}-$all{jobs}{serial}{$status})],
+		    [$all{jobs}{total}{$status}, $all{procHours}{$status}]];
+}
+
+@col_size = ();
+@dcol_size = ();
+my $col_index = 0;
+foreach $col (@by_column) {
+  my $max_size = 0;
+  my @max_dsize = (0, 0);
+ ROW: foreach $row (@$col) {
+    if ($row eq "-") {
+      next ROW;
+    }
+    if (ref($row) eq 'ARRAY') {
+      my $row_max = 0;
+      for (my $q = 0;$q < @$row;$q++) {
+	my $val = sprintf "%d", $$row[$q];
+	$row_max += length $val;
+	$max_dsize[$q] = $max_dsize[$q] > length $val ? $max_dsize[$q] : length $val;
+      }
+      $row_max += 3;
+      $max_size = $max_size > $row_max ? $max_size : $row_max;
+    }
+    else {
+      $max_size = $max_size > length $row ? $max_size : length $row;
+    }
+  }
+  foreach $row (@$col) {
+    if ($row eq "-") {
+      $row = "-" x $max_size;
+    }
+    if (ref($row) eq 'ARRAY') {
+      $row = sprintf "%".$max_dsize[0]."d %s", $$row[0], bn($$row[1], $max_dsize[1]);
+      $row = sprintf "%".$max_size."s", $row;
+    }
+    else {
+      if ($column_format[$col_index] eq 'l') {
+	$row = sprintf "%-".$max_size."s", $row;
+      }
+      elsif ($column_format[$col_index] eq 'c') {
+	$row = center($row, $max_size);
+      }
+    }
+  }
+  $col_index++;
+}
+
+my @out_lines = ();
+for (my $line = 0;$line < @{$by_column[0]};$line++) {
+  my $my_line = $by_column[0][$line];
+  for (my $col = 1;$col < @by_column;$col++) {
+    if ($my_line =~ /^\-.+[\-\+]$/) {
+      $my_line .= "-+-" . $by_column[$col][$line];
+    }
+    else {
+      $my_line .= " | " . $by_column[$col][$line];
+    }
+  }
+  $my_line .= "\n";
+  push @out_lines, $my_line;
+}
+
+print @out_lines;
+print "\n";
+
+my $timeLeft = $all{procHours}{total} / $all{processors}{'R'};
+my $daysLeft = $timeLeft / 24.0; 
+my $hoursLeft = $timeLeft % 24.0;
+my $minLeft = $hoursLeft % 60.0;
+
+printf "Time to clear total queue at current rate: %3d days, %2d hours, %2d minutes\n", $daysLeft, $hoursLeft, $minLeft;
+
+print "Total Users: ".scalar @allUsersByJobs."\n";
+print "\n";
+print "        |      Jobs       |    Processors     |  Processor-Hours \n";
+print "  User  | Total | Running |  Total  | Running |  Total  | Running\n";
+print "--------+-------+---------+---------+---------+---------+--------\n";
+$inThere = 0;
+for (my $q = 0;$q < 3;$q++) {
+    print $allUsersByJobs[$q] . " " x (8-length($allUsersByJobs[$q]));
+    printf "| %5d | %7d | %7d | %7d | %7d | %7d\n",
+    $users{$allUsersByJobs[$q]}{jobs}{total},$users{$allUsersByJobs[$q]}{jobs}{'R'},
+    $users{$allUsersByJobs[$q]}{processors}{total},$users{$allUsersByJobs[$q]}{processors}{'R'},
+    $users{$allUsersByJobs[$q]}{procHours}{total},$users{$allUsersByJobs[$q]}{procHours}{'R'};
+    $inThere = 1 if ($allUsersByJobs[$q] =~ /^$login$/);
+}
+unless ($inThere) {
+    print $login . " " x (8-length($login));
+    printf "| %5d | %7d | %7d | %7d | %7d | %7d\n",
+    $users{$login}{jobs}{total},$users{$login}{jobs}{'R'},
+    $users{$login}{processors}{total},$users{$login}{processors}{'R'},    
+    $users{$login}{procHours}{total},$users{$login}{procHours}{'R'};    
+}
+print "\n";
+print "First Job ID: $firstID\n";
+print " Last Job ID: $lastID\n";
+print "\n";
+if (@yourJobs) {
+    $header[0] =~ s/ {10}/Your Jobs:/;
+    print join "\n",@header;
+    print "\n";
+    print join "\n",@yourJobs;
+    print "\n";
+}
+else {
+    print "You have no jobs.\n";
+}
+
+sub byMostJobs {
+    $users{$b}{jobs}{total} <=> $users{$a}{jobs}{total}
+    ||
+    $a cmp $b
+}
+
+sub byMostProcHours {
+    $users{$b}{procHours}{total} <=> $users{$a}{procHours}{total}
+    ||
+    $a cmp $b
+}
+
+sub bn {
+    my ($number,$space) = @_;
+    $number = int($number);
+    return sprintf "%".($space+2)."s",(sprintf "[%".length($number)."d]",$number);
+}
+
+sub center {
+    my ($string, $space) = @_;
+
+    my $sideSpace = 0.5 * ($space - length $string);
+    my $leftSide = int($sideSpace);
+    $leftSide++ if ((2* $leftSide) < ($space - length $string));
+
+    return " " x $leftSide . $string . " " x $sideSpace;
+}

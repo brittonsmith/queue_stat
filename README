@@ -1,0 +1,15 @@
+queue_stat - statistical information from job queues that use qstat.
+
+Author: Britton D. Smith <brittonsmith@gmail.com>
+Date: Maybe 2004ish?
+Affiliation: Michigan State University
+Homepage: http://hub.yt-project.org/
+
+Usage: ./queue_stat [user1 user2 ...]
+
+queue_stat will gather statistics on number of jobs and processors in various 
+states, such as queued, running, held, complete, as well as cpu hours devoted 
+to each of these (thanks to Cameron Hummels).  It will also return information 
+on users with the highest number of queued and running jobs and cpus.  All 
+job entries for the user, as well as other users given on the command line, are 
+also given.
