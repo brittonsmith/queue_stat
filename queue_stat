@@ -61,8 +61,7 @@ foreach $job (@queue) {
     my @onLine = split " ", $sep;
 
     my $allStatus = join "", (keys %statuses);
-    $job =~ /\d\d\:\d\d\s+([$allStatus])/;
-    my $status = $1;
+    my $status = $onLine[9];
 
     my $user = $onLine[1];
     my $processors = $onLine[6];
