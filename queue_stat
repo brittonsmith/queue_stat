@@ -61,8 +61,7 @@ foreach $job (@queue) {
     my @onLine = split " ", $sep;
 
     my $allStatus = join "", (keys %statuses);
-    $job =~ /\d\d\:\d\d\s+([$allStatus])/;
-    my $status = $1;
+    my $status = $onLine[9];
 
     my $user = $onLine[1];
     my $processors = $onLine[6];
@@ -109,7 +108,7 @@ my @column_format = ('l', 'c');
 push @by_column, ["Jobs [Procs]", "-", "Serial", "Parallel",
 		  "Total", "Parallel (hrs)", "Total (hrs)"];
 push @by_column, ["Total", "-",
-		  [$all{job}{serial}{total}, $all{jobs}{serial}{total}],
+		  [$all{jobs}{serial}{total}, $all{jobs}{serial}{total}],
 		  [($all{jobs}{total}{total}-$all{jobs}{serial}{total}), 
 		   ($all{processors}{total}-$all{jobs}{serial}{total})],
 		  [$all{jobs}{total}{total}, $all{processors}{total}],
