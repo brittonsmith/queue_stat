@@ -102,6 +102,7 @@ foreach $job (@queue) {
 }
 @allUsersByJobs = sort byMostProcHours (keys %users);
 
+### the main jobs table ###
 # sort output into columns for better formatting
 my @by_column = ();
 my @column_format = ('l', 'c');
@@ -126,101 +127,65 @@ foreach $status (keys %statuses) {
 		     ($all{procHours}{$status}-$all{jobs}{serial}{$status})],
 		    [$all{jobs}{total}{$status}, $all{procHours}{$status}]];
 }
+&print_columns(\@by_column, \@column_format);
+### end main jobs table ###
 
-@col_size = ();
-@dcol_size = ();
-my $col_index = 0;
-foreach $col (@by_column) {
-  my $max_size = 0;
-  my @max_dsize = (0, 0);
- ROW: foreach $row (@$col) {
-    if ($row eq "-") {
-      next ROW;
-    }
-    if (ref($row) eq 'ARRAY') {
-      my $row_max = 0;
-      for (my $q = 0;$q < @$row;$q++) {
-	my $val = sprintf "%d", $$row[$q];
-	$row_max += length $val;
-	$max_dsize[$q] = $max_dsize[$q] > length $val ? $max_dsize[$q] : length $val;
-      }
-      $row_max += 3;
-      $max_size = $max_size > $row_max ? $max_size : $row_max;
-    }
-    else {
-      $max_size = $max_size > length $row ? $max_size : length $row;
-    }
-  }
-  foreach $row (@$col) {
-    if ($row eq "-") {
-      $row = "-" x $max_size;
-    }
-    if (ref($row) eq 'ARRAY') {
-      $row = sprintf "%".$max_dsize[0]."d %s", $$row[0], bn($$row[1], $max_dsize[1]);
-      $row = sprintf "%".$max_size."s", $row;
-    }
-    else {
-      if ($column_format[$col_index] eq 'l') {
-	$row = sprintf "%-".$max_size."s", $row;
-      }
-      elsif ($column_format[$col_index] eq 'c') {
-	$row = center($row, $max_size);
-      }
-    }
-  }
-  $col_index++;
-}
-
-my @out_lines = ();
-for (my $line = 0;$line < @{$by_column[0]};$line++) {
-  my $my_line = $by_column[0][$line];
-  for (my $col = 1;$col < @by_column;$col++) {
-    if ($my_line =~ /^\-.+[\-\+]$/) {
-      $my_line .= "-+-" . $by_column[$col][$line];
-    }
-    else {
-      $my_line .= " | " . $by_column[$col][$line];
-    }
-  }
-  $my_line .= "\n";
-  push @out_lines, $my_line;
-}
-
-print @out_lines;
 print "\n";
 
+### queue clear time ###
 my $timeLeft = $all{procHours}{total} / $all{processors}{'R'};
 my $daysLeft = $timeLeft / 24.0; 
 my $hoursLeft = $timeLeft % 24.0;
 my $minLeft = $hoursLeft % 60.0;
 
-printf "Time to clear total queue at current rate: %3d days, %2d hours, %2d minutes\n", $daysLeft, $hoursLeft, $minLeft;
-
+printf "Time to clear total queue at current rate: %3d days, %2d hours, %2d minutes\n", 
+  $daysLeft, $hoursLeft, $minLeft;
 print "Total Users: ".scalar @allUsersByJobs."\n";
+### end queue clear time ###
+
 print "\n";
-print "        |      Jobs       |    Processors     |  Processor-Hours \n";
-print "  User  | Total | Running |  Total  | Running |  Total  | Running\n";
-print "--------+-------+---------+---------+---------+---------+--------\n";
+
+### top users table ###
+$top_users = 3;
 $inThere = 0;
-for (my $q = 0;$q < 3;$q++) {
-    print $allUsersByJobs[$q] . " " x (8-length($allUsersByJobs[$q]));
-    printf "| %5d | %7d | %7d | %7d | %7d | %7d\n",
-    $users{$allUsersByJobs[$q]}{jobs}{total},$users{$allUsersByJobs[$q]}{jobs}{'R'},
-    $users{$allUsersByJobs[$q]}{processors}{total},$users{$allUsersByJobs[$q]}{processors}{'R'},
-    $users{$allUsersByJobs[$q]}{procHours}{total},$users{$allUsersByJobs[$q]}{procHours}{'R'};
-    $inThere = 1 if ($allUsersByJobs[$q] =~ /^$login$/);
+my @by_column = ();
+my @column_format = ('l', 'c', 'c', 'c');
+push @by_column, ["", "User", "-"],
+  ["Jobs", "[Running]", "-"],
+  ["", "Processors", "-"],
+  ["", "cpu-hours", "-"];
+for (my $q = 0;$q < $top_users;$q++) {
+  push @{$by_column[0]}, $allUsersByJobs[$q];
+  push @{$by_column[1]}, [$users{$allUsersByJobs[$q]}{jobs}{total},
+			  $users{$allUsersByJobs[$q]}{jobs}{'R'}];
+  push @{$by_column[2]}, [$users{$allUsersByJobs[$q]}{processors}{total},
+			   $users{$allUsersByJobs[$q]}{processors}{'R'}];
+  push @{$by_column[3]}, [$users{$allUsersByJobs[$q]}{procHours}{total},
+			  $users{$allUsersByJobs[$q]}{procHours}{'R'}];
+  $inThere = 1 if (($inThere) || ($allUsersByJobs[$q] =~ /^$login$/));
 }
 unless ($inThere) {
-    print $login . " " x (8-length($login));
-    printf "| %5d | %7d | %7d | %7d | %7d | %7d\n",
-    $users{$login}{jobs}{total},$users{$login}{jobs}{'R'},
-    $users{$login}{processors}{total},$users{$login}{processors}{'R'},    
-    $users{$login}{procHours}{total},$users{$login}{procHours}{'R'};    
+  push @{$by_column[0]}, $login;
+  push @{$by_column[1]}, [$users{$login}{jobs}{total},
+			  $users{$login}{jobs}{'R'}];
+  push @{$by_column[2]}, [$users{$login}{processors}{total},
+			  $users{$login}{processors}{'R'}];
+  push @{$by_column[3]}, [$users{$login}{procHours}{total},
+			  $users{$login}{procHours}{'R'}];
 }
+&print_columns(\@by_column, \@column_format);
+### end top users table ###
+
 print "\n";
+
+### first/last job ###
 print "First Job ID: $firstID\n";
 print " Last Job ID: $lastID\n";
+### end first/last job ###
+
 print "\n";
+
+### specific jobs ###
 if (@yourJobs) {
     $header[0] =~ s/ {10}/Your Jobs:/;
     print join "\n",@header;
@@ -231,6 +196,7 @@ if (@yourJobs) {
 else {
     print "You have no jobs.\n";
 }
+### end specific jobs ###
 
 sub byMostJobs {
     $users{$b}{jobs}{total} <=> $users{$a}{jobs}{total}
@@ -247,7 +213,8 @@ sub byMostProcHours {
 sub bn {
     my ($number,$space) = @_;
     $number = int($number);
-    return sprintf "%".($space+2)."s",(sprintf "[%".length($number)."d]",$number);
+    return sprintf "%".($space+2)."s",
+      (sprintf "[%".length($number)."d]",$number);
 }
 
 sub center {
@@ -258,4 +225,72 @@ sub center {
     $leftSide++ if ((2* $leftSide) < ($space - length $string));
 
     return " " x $leftSide . $string . " " x $sideSpace;
+}
+
+sub print_columns {
+  my ($column_ptr, $format_ptr) = @_;
+
+  my @by_column = @$column_ptr;
+  my @column_format = @$format_ptr;
+
+  @col_size = ();
+  @dcol_size = ();
+  my $col_index = 0;
+  foreach $col (@by_column) {
+    my $max_size = 0;
+    my @max_dsize = (0, 0);
+  ROW: foreach $row (@$col) {
+      if ($row eq "-") {
+	next ROW;
+      }
+      if (ref($row) eq 'ARRAY') {
+	for (my $q = 0;$q < @$row;$q++) {
+	  my $val = sprintf "%d", $$row[$q];
+	  $max_dsize[$q] = $max_dsize[$q] > length $val ?
+	    $max_dsize[$q] : length $val;
+	}
+      }
+      else {
+	$max_size = $max_size > length $row ? $max_size : length $row;
+      }
+    }
+    $max_size = $max_size > ($max_dsize[0] + $max_dsize[1] + 3) ?
+      $max_size : ($max_dsize[0] + $max_dsize[1] + 3);
+    foreach $row (@$col) {
+      if ($row eq "-") {
+	$row = "-" x $max_size;
+      }
+      if (ref($row) eq 'ARRAY') {
+	$row = sprintf "%".$max_dsize[0]."d %s", 
+	  $$row[0], bn($$row[1], $max_dsize[1]);
+	$row = sprintf "%".$max_size."s", $row;
+      }
+      else {
+	if ($column_format[$col_index] eq 'l') {
+	  $row = sprintf "%-".$max_size."s", $row;
+	}
+	elsif ($column_format[$col_index] eq 'c') {
+	  $row = center($row, $max_size);
+	}
+      }
+    }
+    $col_index++;
+  }
+
+  my @out_lines = ();
+  for (my $line = 0;$line < @{$by_column[0]};$line++) {
+    my $my_line = $by_column[0][$line];
+    for (my $col = 1;$col < @by_column;$col++) {
+      if ($my_line =~ /^\-.+[\-\+]$/) {
+	$my_line .= "-+-" . $by_column[$col][$line];
+      }
+      else {
+	$my_line .= " | " . $by_column[$col][$line];
+      }
+    }
+    $my_line .= "\n";
+    push @out_lines, $my_line;
+  }
+
+  print @out_lines;
 }
