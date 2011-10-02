@@ -35,8 +35,7 @@ $login = getlogin();
 
 @moreUsers = @ARGV;
 
-#@queue = split /\n/,`qstat -a`;
-@queue = split /\n/,`cat qstat.out`;
+@queue = split /\n/,`qstat -a`;
 shift @queue;
 shift @queue;
 @header = (shift @queue,
