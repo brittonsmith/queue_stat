@@ -35,7 +35,8 @@ $login = getlogin();
 
 @moreUsers = @ARGV;
 
-@queue = split /\n/,`qstat -a`;
+#@queue = split /\n/,`qstat -a`;
+@queue = split /\n/,`cat qstat.out`;
 shift @queue;
 shift @queue;
 @header = (shift @queue,
@@ -145,8 +146,9 @@ print "Total Users: ".scalar @allUsersByJobs."\n";
 print "\n";
 
 ### top users table ###
-$top_users = 3;
+$top_users = 3 < @allUsersByJobs ? 3 : @allUsersByJobs;
 $inThere = 0;
+$loginRank = -1;
 my @by_column = ();
 my @column_format = ('l', 'c', 'c', 'c');
 push @by_column, ["", "User", "-"],
@@ -154,17 +156,25 @@ push @by_column, ["", "User", "-"],
   ["", "Processors", "-"],
   ["", "cpu-hours", "-"];
 for (my $q = 0;$q < $top_users;$q++) {
-  push @{$by_column[0]}, $allUsersByJobs[$q];
+  push @{$by_column[0]}, ($q+1) . ") " . $allUsersByJobs[$q];
   push @{$by_column[1]}, [$users{$allUsersByJobs[$q]}{jobs}{total},
 			  $users{$allUsersByJobs[$q]}{jobs}{'R'}];
   push @{$by_column[2]}, [$users{$allUsersByJobs[$q]}{processors}{total},
 			   $users{$allUsersByJobs[$q]}{processors}{'R'}];
   push @{$by_column[3]}, [$users{$allUsersByJobs[$q]}{procHours}{total},
 			  $users{$allUsersByJobs[$q]}{procHours}{'R'}];
-  $inThere = 1 if (($inThere) || ($allUsersByJobs[$q] =~ /^$login$/));
+  if (($inThere) || ($allUsersByJobs[$q] =~ /^$login$/)) {
+    $inThere = 1;
+    $loginRank = $q;
+  }
 }
 unless ($inThere) {
-  push @{$by_column[0]}, $login;
+  for (my $q = 0;$q < @allUsersByJobs;$q++) {
+    $loginRank = $q if ($allUsersByJobs[$q] =~ /^$login$/);
+  }
+  $loginRank = $loginRank >= 0 ? ($loginRank + 1) : "-";
+
+  push @{$by_column[0]}, $loginRank . ") " . $login;
   push @{$by_column[1]}, [$users{$login}{jobs}{total},
 			  $users{$login}{jobs}{'R'}];
   push @{$by_column[2]}, [$users{$login}{processors}{total},
