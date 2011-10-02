@@ -133,7 +133,8 @@ foreach $status (keys %statuses) {
 print "\n";
 
 ### queue clear time ###
-my $timeLeft = $all{procHours}{total} / $all{processors}{'R'};
+my $timeLeft = $all{processors}{'R'} ? ($all{procHours}{total} / 
+					$all{processors}{'R'}) : 0;
 my $daysLeft = $timeLeft / 24.0; 
 my $hoursLeft = $timeLeft % 24.0;
 my $minLeft = $hoursLeft % 60.0;
