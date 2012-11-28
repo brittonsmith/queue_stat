@@ -45,7 +45,8 @@ shift @queue;
 $all{jobs}{total} = @queue;
 
 %statuses = ('Q' => 'Queued', 'R' => 'Running',
-	     'H' => 'Held',   'C' => 'Complete');
+	     'H' => 'Held',   'C' => 'Complete',
+             'W' => 'Waiting', 'E' => 'Exiting');
 @yourJobs = ();
 
 $queue[0] =~ /(^\d+)\./;
@@ -115,7 +116,8 @@ push @by_column, ["Total", "-",
 		  [($all{jobs}{total}{total}-$all{jobs}{serial}{total}),
 		   ($all{procHours}{total}-$all{jobs}{serial}{total})],
 		  [$all{jobs}{total}{total}, $all{procHours}{total}]];
-foreach $status (keys %statuses) {
+ STAT: foreach $status (keys %statuses) {
+     next STAT unless ($all{jobs}{total}{$status});
   push @column_format, 'c';
   push @by_column, [$statuses{$status}, "-",
 		    [$all{jobs}{serial}{$status}, $all{jobs}{serial}{$status}],
