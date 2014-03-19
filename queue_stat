@@ -66,6 +66,12 @@ foreach $job (@queue) {
 
     my $user = $onLine[1];
     my $processors = $onLine[6];
+
+    if ($processors == "--") {
+	my $job_id = (split /\./, $onLine[0])[0];
+    	$processors = &get_processors_brute($job_id);
+    }
+
     my $time = $onLine[8];
     my @time = split ":", $time;
     my $hours = $time[0];
@@ -304,4 +310,20 @@ sub print_columns {
   }
 
   print @out_lines;
+}
+
+sub get_processors_brute {
+    my ($job_id) = @_;
+    my @job_lines = split /\n/, `qstat -f $job_id`;
+    my $nodes, $ppn;
+  SEARCH: foreach $line (@job_lines) {
+      chomp $line;
+      $line =~ s/\s+//g;
+      if ($line =~ /^Resource_List\.nodes\s*\=\s*(\d+)\:ppn\=(\d+)/) {
+	  $nodes = $1;
+	  $ppn = $2;
+	  last SEARCH;
+      }
+  }
+    return ($nodes * $ppn);
 }
