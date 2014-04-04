@@ -38,6 +38,9 @@ while ($arg = shift @ARGV) {
     if ($arg =~ /^-l$/) {
 	$top_users_list = shift @ARGV or die "Must supply integer after -l.\n";
     }
+    elsif ($arg =~ /^-h$/) {
+	&print_help();
+    }
     else {
 	push @moreUsers, $arg;
     }
@@ -334,4 +337,10 @@ sub get_processors_brute {
       }
   }
     return ($nodes * $ppn);
+}
+
+sub print_help {
+    print "Usage: queue_stat [-l <int>] [username1] [username2] ...\n";
+    print "       -l <integer>: change the number of top users printed.  Default: 3 + you.\n";
+    exit(0);
 }

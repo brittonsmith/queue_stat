@@ -5,7 +5,7 @@ Date: Maybe 2004ish?
 Affiliation: Michigan State University
 Homepage: http://hub.yt-project.org/
 
-Usage: ./queue_stat [user1 user2 ...]
+Usage: ./queue_stat [-l <int>] [user1 user2 ...]
 
 queue_stat will gather statistics on number of jobs and processors in various 
 states, such as queued, running, held, complete, as well as cpu hours devoted 
