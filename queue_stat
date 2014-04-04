@@ -32,8 +32,16 @@
 ### OTHER DEALINGS IN THE SOFTWARE.
 
 $login = getlogin();
+$top_users_list = 3;
 
-@moreUsers = @ARGV;
+while ($arg = shift @ARGV) {
+    if ($arg =~ /^-l$/) {
+	$top_users_list = shift @ARGV or die "Must supply integer after -l.\n";
+    }
+    else {
+	push @moreUsers, $arg;
+    }
+}
 
 @queue = split /\n/,`qstat -a`;
 shift @queue;
@@ -154,7 +162,7 @@ print "Total Users: ".scalar @allUsersByJobs."\n";
 print "\n";
 
 ### top users table ###
-$top_users = 3 < @allUsersByJobs ? 3 : @allUsersByJobs;
+$top_users = $top_users_list < @allUsersByJobs ? $top_users_list : @allUsersByJobs;
 $inThere = 0;
 $loginRank = -1;
 my @by_column = ();
@@ -319,7 +327,7 @@ sub get_processors_brute {
   SEARCH: foreach $line (@job_lines) {
       chomp $line;
       $line =~ s/\s+//g;
-      if ($line =~ /^Resource_List\.nodes\s*\=\s*(\d+)\:ppn\=(\d+)/) {
+      if ($line =~ /^Resource_List\.nodes\s*\=\s*(\d+).*\:ppn\=(\d+)/) {
 	  $nodes = $1;
 	  $ppn = $2;
 	  last SEARCH;
