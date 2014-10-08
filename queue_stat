@@ -335,6 +335,10 @@ sub get_processors_brute {
 	  $ppn = $2;
 	  last SEARCH;
       }
+      elsif ($line =~ /^Resource_List\.nodes\s*\=\s*(\d+)/) {
+	  $nodes = $1;
+	  $ppn = 1;
+      }
   }
     return ($nodes * $ppn);
 }
