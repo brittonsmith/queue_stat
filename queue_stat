@@ -33,10 +33,14 @@
 
 $login = getlogin();
 $top_users_list = 3;
+$use_brute_force = 0;
 
 while ($arg = shift @ARGV) {
     if ($arg =~ /^-l$/) {
 	$top_users_list = shift @ARGV or die "Must supply integer after -l.\n";
+    }
+    if ($arg =~ /^-f$/) {
+	$use_brute_force = 1;
     }
     elsif ($arg =~ /^-h$/) {
 	&print_help();
@@ -78,7 +82,7 @@ foreach $job (@queue) {
     my $user = $onLine[1];
     my $processors = $onLine[6];
 
-    if ($processors == "--") {
+    if (($processors == "--") && ($use_brute_force)) {
 	my $job_id = (split /\./, $onLine[0])[0];
     	$processors = &get_processors_brute($job_id);
     }
