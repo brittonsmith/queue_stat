@@ -39,7 +39,7 @@ while ($arg = shift @ARGV) {
     if ($arg =~ /^-l$/) {
 	$top_users_list = shift @ARGV or die "Must supply integer after -l.\n";
     }
-    if ($arg =~ /^-f$/) {
+    elsif ($arg =~ /^-f$/) {
 	$use_brute_force = 1;
     }
     elsif ($arg =~ /^-h$/) {
@@ -82,7 +82,7 @@ foreach $job (@queue) {
     my $user = $onLine[1];
     my $processors = $onLine[6];
 
-    if (($processors == "--") && ($use_brute_force)) {
+    if (($processors == "--") || ($use_brute_force)) {
 	my $job_id = (split /\./, $onLine[0])[0];
     	$processors = &get_processors_brute($job_id);
     }
@@ -340,6 +340,10 @@ sub get_processors_brute {
 	  last SEARCH;
       }
       elsif ($line =~ /^Resource_List\.nodes\s*\=\s*(\d+)/) {
+	  $nodes = $1;
+	  $ppn = 1;
+      }
+      elsif ($line =~ /^Resource_List\.ncpus\s*\=\s*(\d+)/) {
 	  $nodes = $1;
 	  $ppn = 1;
       }
