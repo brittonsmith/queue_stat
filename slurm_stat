@@ -307,6 +307,31 @@ sub print_help {
     exit(0);
 }
 
+sub get_hours {
+    my ($time) = @_;
+
+    my $days, $hours, $minutes; $seconds;
+    if ($time =~ /^\d+-/) {
+	($days, $time) = split "-", $time;
+    }
+    else {
+	$days = 0.;
+    }
+
+    my $number = () = $time =~ /\:/gi;
+    if ($number == 1) {
+	$hours = 0.;
+	($minutes, $seconds) = split ":", $time;
+    }
+    else {
+	($hours, $minutes, $seconds) = split ":", $time;
+    }
+
+    $hours += $days*24. + $minutes/60. + $seconds/3600.;
+
+    return $hours;
+}
+
 sub get_job {
     my ($job) = @_;
 
@@ -320,12 +345,7 @@ sub get_job {
     my $processors = $onLine[6];
 
     my $time = $onLine[9];
-    my $days, $hours, $minutes; $seconds;
-    if ($time =~ /^\d+-/) {
-	($days, $time) = split "-", $time;
-    }
-    ($hours, $minutes, $seconds) = split ":", $time;
-    $hours += $days*24. + $minutes/60. + $seconds/3600.;
+    my $hours = &get_hours($time);
     my $procHours = $processors * $hours;
 
     return ($jobid, $user, $status, $processors, $procHours);
