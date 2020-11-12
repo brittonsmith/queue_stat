@@ -319,7 +319,7 @@ sub get_job {
     my $user = $onLine[1];
     my $processors = $onLine[6];
 
-    my $time = $onLine[8];
+    my $time = $onLine[9];
     my $days, $hours, $minutes; $seconds;
     if ($time =~ /^\d+-/) {
 	($days, $time) = split "-", $time;
