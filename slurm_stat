@@ -72,6 +72,7 @@ foreach $job (@queue) {
     $all{jobs}{serial}{total}++ if ($processors eq ' 1');
     $all{processors}{total} += $processors;
     $all{procHours}{total} += $procHours;
+    $all{procHours_serial}{total} += $procHours if ($processors == 1);
 
     $users{$user}{jobs}{total}++;
     $users{$user}{processors}{total} += $processors;
@@ -82,6 +83,7 @@ foreach $job (@queue) {
     $all{jobs}{serial}{total}++ if ($processors == 1);
     $all{processors}{$status} += $processors;
     $all{procHours}{$status} += $procHours;
+    $all{procHours_serial}{$status} += $procHours if ($processors == 1);
 
     $users{$user}{jobs}{$status}++;
     $users{$user}{processors}{$status} += $processors;
@@ -109,7 +111,7 @@ push @by_column, ["Total", "-",
 		   ($all{processors}{total}-$all{jobs}{serial}{total})],
 		  [$all{jobs}{total}{total}, $all{processors}{total}],
 		  [($all{jobs}{total}{total}-$all{jobs}{serial}{total}),
-		   ($all{procHours}{total}-$all{jobs}{serial}{total})],
+		   ($all{procHours}{total}-$all{procHours_serial}{total})],
 		  [$all{jobs}{total}{total}, $all{procHours}{total}]];
  STAT: foreach $status (keys %statuses) {
      next STAT unless ($all{jobs}{total}{$status});
@@ -120,7 +122,7 @@ push @by_column, ["Total", "-",
 		     ($all{processors}{$status}-$all{jobs}{serial}{$status})],
 		    [$all{jobs}{total}{$status}, $all{processors}{$status}],
 		    [($all{jobs}{total}{$status}-$all{jobs}{serial}{$status}),
-		     ($all{procHours}{$status}-$all{jobs}{serial}{$status})],
+		     ($all{procHours}{$status}-$all{procHours_serial}{$status})],
 		    [$all{jobs}{total}{$status}, $all{procHours}{$status}]];
 }
 &print_columns(\@by_column, \@column_format);
